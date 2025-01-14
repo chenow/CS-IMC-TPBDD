@@ -298,27 +298,101 @@ Pour supprimer des noeuds, utilisez le statement `DELETE`.
 # Partie 4 - Requêtes graphe (Cypher)
 Ecrire les requêtes ci-dessous, et les expliquer en deux ou trois phrases maximum en français ou en anglais.
 
-**Exercice 1** (¼ pt): Ajoutez une personne ayant votre prénom et votre nom dans le graphe. Verifiez qui le noeud a bien éte crée. 
+**Exercice 1** (¼ pt): Ajoutez une personne ayant votre prénom et votre nom dans le graphe. Verifiez qui le noeud a bien éte crée.
+
+```cypher
+CREATE (a:Artist {primaryName: "Antoine Chéneau"})
+RETURN a;
+```
 
 **Exercice 2** (¼ pt): Ajoutez un film nommé `L'histoire de mon 20 au cours Infrastructure de donnees`
 
+```cypher
+CREATE (f:Film {title: "L'histoire de mon 20 au cours Infrastructure de donnees"})
+RETURN f;
+```
+
 **Exercice 3** (½ pt): Ajoutez la relation `ACTED_IN` qui modélise votre participation à ce film en tant qu'acteur/actrice
+
+```cypher
+MATCH (a:Artist {primaryName: "Antoine Chéneau"})
+WITH a
+MATCH (f:Film {primaryTitle: "L'histoire de mon 20 au cours Infrastructure de donnees"})
+CREATE (a)-[r:acted_in]->(f)
+RETURN a, r, f;
+```
 
 **Exercice 4** (½ pt): Ajoutez deux de vos professeurs/enseignants comme réalisateurs/réalisatrices de ce film.
 
+```cypher
+MATCH (f:Film {primaryTitle: "L'histoire de mon 20 au cours Infrastructure de donnees"})
+WITH f
+CREATE (a1:Artist {primaryName: "Professeur 1"})
+CREATE (a2:Artist {primaryName: "Professeur 2"})
+CREATE (a1)-[r1:directed]->(f)
+CREATE (a2)-[r2:directed]->(f)
+RETURN a1, r1, f, a2, r2;
+```
+
 **Exercice 5** (½ pt): Affichez le noeud représentant l'actrice nommée `Nicole Kidman`, et visualisez son année de naissance.
+
+```cypher
+MATCH (a:Artist {primaryName: "Nicole Kidman"})
+RETURN a.birthYear;
+>>> 1967
+```
 
 **Exercice 6** (½ pt): Visualisez l'ensemble des films.
 
+```cypher
+MATCH (f:Film)
+RETURN f;
+```
+
 **Exercice 7** (½ pt): Trouvez les noms des artistes nés en `1963`, affichez ensuite leur nombre.
+
+```cypher
+MATCH (a:Artist)
+WHERE a.birthYear = 1963
+RETURN a, COUNT(a);
+```
 
 **Exercice 8** (1 pt): Trouver l'ensemble des acteurs (sans entrées doublons) qui ont joué dans plus d'un film.
 
+```cypher
+MATCH (a:Artist)-[:acted_in]->(f:Film)
+WITH a, COUNT(f) AS filmsCount
+WHERE filmsCount > 1
+RETURN DISTINCT a.primaryName;
+```
+
 **Exercice 9** (1 pt): Trouvez les artistes ayant eu plusieurs responsabilités au cours de leur carrière (acteur, directeur, producteur...).
+
+```cypher
+MATCH (a:Artist)-[r]->(f:Film)
+WITH a, f, COUNT(r) AS responsibilitiesCount
+WHERE responsibilitiesCount > 1
+RETURN DISTINCT a.primaryName, f.primaryTitle;
+```
 
 **Exercice 10** (1 pt): Montrez les artistes ayant eu plusieurs responsabilités dans un même film (ex: à la fois acteur et directeur, ou toute autre combinaison) et les titres de ces films.
 
+```cypher
+MATCH (a:Artist)-[r]->(f:Film)
+WITH a, f, COLLECT(DISTINCT TYPE(r)) AS roles
+WHERE SIZE(roles) > 1
+RETURN a.primaryName, f.primaryTitle, roles;
+```
+
 **Exercice 11** (2 pt): Trouver le nom du ou des film(s) ayant le plus d'acteurs.
+
+```cypher
+MATCH (f:Film)<-[:acted_in]-(a:Artist)
+WITH f, COUNT(a) AS actorCount
+RETURN f.primaryTitle, actorCount
+ORDER BY actorCount DESC
+LIMIT 1
+```
 
 ## Requêtes graphe (Gremlin)
 Une autre base de données graphe a été créée pour ce TP.  Elle utilise la technologie Cosmos DB, une base de donnée multi-paradigme sur Azure. Pour le paradigme graphe et contrairement à Cypher, Cosmos DB utilise un langage de requêtage open source: [Apache Gremlin](https://tinkerpop.apache.org/docs/3.3.2/reference/#graph-traversal-steps).
