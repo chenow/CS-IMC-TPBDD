@@ -78,21 +78,130 @@ Ecrire les requêtes ci-dessous, et les expliquer en deux ou trois phrases maxim
 
 **Exercice 0**: Décrivez les tables et les attributs.
 
-**Exercice 1** (¼ pt): Visualisez l'année de naissance de l'artiste `Brad Pitt`.
+tArtist
+idArtist (primary key)
+primaryName (nvarchar)
+birthYear (smallint)
 
-**Exercice 2** (¼ pt): Comptez le nombre d'artistes présents dans la base de donnee. 
+tFilm
+idFilm (primary key)
+primaryTitle (nvarchar)
+startYear (smallint)
+averageRating (decimal)
+runtimeMinutes (smallint)
+
+tFilmGenre
+idFilm (primary key)
+idGenre (foreign key)
+
+tGenre
+idGenre (primary key)
+genre (nvarchar)
+
+tJob
+idArtist (primary key)
+category (nvarchar)
+idFilm (foreign key)
+
+
+**Exercice 1** (¼ pt): Visualisez l'année de naissance de l'artiste `Inci Pars`.
+
+```sql
+SELECT birthYear FROM tArtist where primaryName =  'Inci Pars';
+>>> 1980
+```
+
+**Exercice 2** (¼ pt): Comptez le nombre d'artistes présents dans la base de donnee.
+
+```sql
+SELECT COUNT(*) FROM tArtist;
+>>> 84166
+```
 
 **Exercice 3** (¼ pt): Trouvez les noms des artistes nés en `1960`, affichez ensuite leur nombre.
 
+```sql
+SELECT primaryName FROM tArtist where birthYear = 1960;
+SELECT COUNT(*) FROM tArtist where birthYear = 1960;
+>>> 211
+```
+
 **Exercice 4** (1 pt): Trouvez l'année de naissance la plus représentée parmi les acteurs (sauf 0!), et combien d'acteurs sont nés cette année là.
+```sql
+SELECT TOP 1 birthYear, COUNT(*) as nb 
+FROM tArtist 
+WHERE birthYear != 0 
+GROUP BY birthYear 
+ORDER BY nb DESC;
+
+>>> 1982, 459
+```
 
 **Exercice 5** (½ pt): Trouvez les artistes ayant joué dans plus d'un film
 
+```sql
+SELECT j.idArtist, a.primaryName, COUNT(DISTINCT j.idFilm) AS nb_films
+FROM tJob j JOIN tArtist a ON j.idArtist = a.idArtist
+WHERE j.category = 'acted in'
+GROUP BY j.idArtist, a.primaryName
+HAVING COUNT(DISTINCT j.idFilm) > 1;
+>>> 8538 lignes
+```
+
+explication:
+La requête joint les tables `tArtist` et `tJob` sur la clé `idArtist` et filtre les lignes où la catégorie est `acted in`. Ensuite, elle groupe les résultats par `idArtist` (et ensuite primaryName pour gérer les cas où plusieurs artistes ont les mêmes noms) et compte le nombre de films pour chaque artiste. Enfin, elle filtre les artistes ayant joué dans plus d'un film.
+
 **Exercice 6** (½ pt): Trouvez les artistes ayant eu plusieurs responsabilités au cours de leur carrière (acteur, directeur, producteur...).
+
+```sql
+SELECT a.primaryName, COUNT(DISTINCT j.category) AS nb_responsibilities
+FROM tJob j
+JOIN tArtist a ON j.idArtist = a.idArtist
+GROUP BY j.idArtist, a.primaryName
+HAVING COUNT(DISTINCT j.category) > 1
+>>> 6028 lignes
+```
+
+explication:
+La requête joint les tables `tJob` et `tArtist` sur la clé `idArtist` et groupe les résultats par `idArtist` puis `primaryName`. Ensuite, elle compte le nombre de catégories distinctes pour chaque artiste et filtre les artistes ayant eu plusieurs responsabilités au cours de leur carrière.
 
 **Exercice 7** (¾ pt): Trouver le nom du ou des film(s) ayant le plus d'acteurs (i.e. uniquement *acted in*).
 
+```sql
+WITH FilmActorCount AS (
+    SELECT j.idFilm, f.primaryTitle, COUNT(DISTINCT j.idArtist) AS nb_actors
+    FROM tJob j
+    JOIN tFilm f ON j.idFilm = f.idFilm WHERE j.category = 'acted in'
+GROUP BY j.idFilm, f.primaryTitle
+)
+
+SELECT idFilm, primaryTitle, nb_actors
+FROM FilmActorCount
+WHERE nb_actors = (SELECT MAX(nb_actors) FROM FilmActorCount);
+>>> 5781 lignes
+```
+
+Cette requête utilise une CTE (Common Table Expression) pour compter le nombre d'acteurs distincts par film dans FilmActorCount. Ensuite, elle sélectionne le ou les films ayant le plus grand nombre d'acteurs en comparant chaque valeur à la valeur maximale des acteurs obtenue via une sous-requête.
+
 **Exercice 8** (1 pt): Montrez les artistes ayant eu plusieurs responsabilités dans un même film (ex: à la fois acteur et directeur, ou toute autre combinaison) et les titres de ces films.
+
+```sql
+SELECT 
+    a.primaryName,
+    f.primaryTitle,
+    COUNT(DISTINCT j.category) AS nb_responsibilities
+FROM tJob j
+JOIN tArtist a ON j.idArtist = a.idArtist
+JOIN tFilm f ON j.idFilm = f.idFilm
+GROUP BY a.idArtist, f.idFilm, a.primaryName, f.primaryTitle
+HAVING COUNT(DISTINCT j.category) > 1
+>>> 6195 lignes
+```
+
+Explication:
+
+La requête joint les tables `tJob`, `tArtist` et `tFilm` sur les clés `idArtist` et `idFilm`. Ensuite, elle groupe les résultats par `idArtist`, `idFilm`, `primaryName` et `primaryTitle`. Enfin, elle compte le nombre de catégories distinctes pour chaque artiste et film et filtre les artistes ayant eu plusieurs responsabilités dans un même film.
+
 
 # Partie 2 - Base de données graphe - Neo4j
 Neo4j est une base de données graphe. Les données sont représentées par des nœuds, des relations entre les nœuds et des propriétés:
